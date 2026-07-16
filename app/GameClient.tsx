@@ -53,10 +53,12 @@ export default function GameClient() {
 
   useEffect(() => {
     const saved = window.localStorage.getItem("castle-username") || "";
-    setUsername(saved);
-    setDraftName(saved);
+    const restore = window.setTimeout(() => {
+      setUsername(saved);
+      setDraftName(saved);
+    }, 0);
     fetch("/api/leaderboard").then((r) => r.json()).then((d) => setLeaders(d.players || [])).catch(() => {});
-    return () => socket.current?.close();
+    return () => { window.clearTimeout(restore); socket.current?.close(); };
   }, []);
 
   useEffect(() => {

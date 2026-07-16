@@ -45,12 +45,22 @@ async function getRoom(db: D1Database, code: string) {
 function seatFor(room: ActiveRoom, username: string): Seat {
   return room.white_username === username ? "w" : room.black_username === username ? "b" : "spectator";
 }
+function chessForRoom(room: ActiveRoom) {
+  const chess = new Chess();
+  if (room.pgn) {
+    try {
+      chess.loadPgn(room.pgn);
+      if (chess.fen() === room.fen) return chess;
+    } catch { /* fall back to the authoritative position */ }
+  }
+  chess.load(room.fen);
+  return chess;
+}
 async function stateFor(db: D1Database, room: ActiveRoom) {
   const players: { w?: Player; b?: Player } = {};
   if (room.white_username) players.w = await getPlayer(db, room.white_username);
   if (room.black_username) players.b = await getPlayer(db, room.black_username);
-  const chess = new Chess();
-  chess.load(room.fen);
+  const chess = chessForRoom(room);
   return {
     type: "state", fen: room.fen, pgn: room.pgn, turn: chess.turn(), status: room.status, players,
     lastMove: room.last_from && room.last_to ? { from: room.last_from, to: room.last_to } : undefined,
@@ -96,8 +106,7 @@ async function makeMove(db: D1Database, code: string, username: string, message:
   const room = await getRoom(db, code);
   if (!room || room.status !== "playing") throw new Error("This game is not active");
   const side = seatFor(room, username);
-  const chess = new Chess();
-  chess.load(room.fen);
+  const chess = chessForRoom(room);
   if (side === "spectator" || chess.turn() !== side) throw new Error("It is not your move");
   const move = chess.move({ from: String(message.from || ""), to: String(message.to || ""), promotion: String(message.promotion || "q") });
   if (!move) throw new Error("That move is not legal");
@@ -123,8 +132,7 @@ async function resignGame(db: D1Database, code: string, username: string) {
     .bind(winner, Date.now(), code).run();
   if (!result.meta.changes) throw new Error("This game is already over");
   const updated = (await getRoom(db, code))!;
-  const chess = new Chess();
-  chess.load(updated.fen);
+  const chess = chessForRoom(updated);
   await settleGame(db, updated, chess);
   return (await getRoom(db, code))!;
 }
@@ -173,6 +181,14 @@ const worker = {
       await ensureSchema(env.DB);
       const result = await env.DB.prepare("SELECT username, rating, wins, losses, draws, games FROM players ORDER BY rating DESC, games DESC LIMIT 8").all();
       return Response.json({ players: result.results }, { headers: { "Cache-Control": "no-store" } });
+    }
+    if (url.pathname === "/api/player") {
+      await ensureSchema(env.DB);
+      const username = cleanName(url.searchParams.get("username"));
+      if (!username) return Response.json({ error: "Username is required" }, { status: 400 });
+      const player = await env.DB.prepare("SELECT username, rating, wins, losses, draws, games FROM players WHERE username = ?").bind(username).first();
+      if (!player) return Response.json({ error: "Player not found" }, { status: 404 });
+      return Response.json({ player }, { headers: { "Cache-Control": "no-store" } });
     }
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];

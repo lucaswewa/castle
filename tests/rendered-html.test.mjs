@@ -32,8 +32,10 @@ test("keeps multiplayer rules and persistence on the server", async () => {
   ]);
   assert.match(worker, /new WebSocketPair/);
   assert.match(worker, /chess\.move/);
+  assert.match(worker, /chess\.loadPgn\(room\.pgn\)/);
   assert.match(worker, /settleGame/);
   assert.match(worker, /message\.type === "resign"/);
+  assert.match(worker, /url\.pathname === "\/api\/player"/);
   assert.match(client, /new WebSocket/);
   assert.match(hosting, /"d1": "DB"/);
 });

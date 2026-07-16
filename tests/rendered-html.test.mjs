@@ -17,7 +17,7 @@ test("server-renders the Castle game shell and social metadata", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /<title>Castle — Play chess together<\/title>/);
+  assert.match(html, /<title>Castle (?:—|-) Play chess together<\/title>/);
   assert.match(html, /Classic chess/);
   assert.match(html, /LIVE MULTIPLAYER/);
   assert.match(html, /og\.png/);

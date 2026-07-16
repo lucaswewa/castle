@@ -59,6 +59,23 @@ export default function GameClient() {
     return () => socket.current?.close();
   }, []);
 
+  useEffect(() => {
+    if (!room || !username) return;
+    let stopped = false;
+    const refresh = () => fetch(`/api/room?code=${encodeURIComponent(room)}&username=${encodeURIComponent(username)}`)
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => {
+        if (!stopped && data?.state) {
+          setSnapshot(data.state);
+          if (data.side) setSide(data.side);
+        }
+      })
+      .catch(() => {});
+    refresh();
+    const timer = window.setInterval(refresh, 700);
+    return () => { stopped = true; window.clearInterval(timer); };
+  }, [room, username]);
+
   const game = useMemo(() => {
     const next = new Chess();
     try { next.load(snapshot.fen); } catch { /* keep initial board */ }

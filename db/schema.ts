@@ -34,3 +34,14 @@ export const activeRooms = sqliteTable("active_rooms", {
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 });
+
+export const roomFeatures = sqliteTable("room_features", {
+  code: text("code").primaryKey(),
+  whiteTimeMs: integer("white_time_ms").notNull().default(600000),
+  blackTimeMs: integer("black_time_ms").notNull().default(600000),
+  turnStartedAt: integer("turn_started_at"),
+  drawOfferedBy: text("draw_offered_by"),
+  rematchWhite: integer("rematch_white").notNull().default(0),
+  rematchBlack: integer("rematch_black").notNull().default(0),
+  updatedAt: integer("updated_at").notNull(),
+});
